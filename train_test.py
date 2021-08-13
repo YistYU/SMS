@@ -43,6 +43,12 @@ parser = argparse.ArgumentParser(description='PyTorch scRNA-seq CLEAR Training')
 parser.add_argument('--input_h5ad_path', type=str, default= "",
                     help='path to input h5ad file')
 
+parser.add_argument('--input_ATAC_h5ad_path', type=str, default= "",
+                    help='path to input ATAC h5ad file')
+
+parser.add_argument('--input_RNA_h5ad_path', type=str, default= "",
+                    help='path to input RNA h5ad file')
+
 parser.add_argument('--obs_label_colname', type=str, default= None,
                     help='column name of the label in obs')
 
