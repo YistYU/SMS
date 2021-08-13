@@ -301,10 +301,10 @@ def main_worker(args):
     #print(model_dict["E{:}".format(2)])
     model_dict["C{:}".format(1)] = pcl.builder.Classifier_1(int(train_dataset_ATAC.num_genes), num_hiddens=128, p_drop=0.0, num_clusters=3)
     model_dict["C{:}".format(2)] = pcl.builder.Classifier_1(int(train_dataset_ATAC.num_genes), num_hiddens=128, p_drop=0.0, num_clusters=3)
-    model_dict["V"] = pcl.builder.VCDN(num_view=2, num_cls=3, hvcdn_dim=9)
+    #model_dict["V"] = pcl.builder.VCDN(num_view=2, num_cls=3, hvcdn_dim=9)
 
-    if num_view >= 2:
-        model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.MLPEncoder_VCDN, num_view, num_cluster, dim_hvcdn, args.low_dim, args.pcl_r, args.moco_m, args.temperature)
+    #if num_view >= 2:
+    #    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.MLPEncoder_VCDN, num_view, num_cluster, dim_hvcdn, args.low_dim, args.pcl_r, args.moco_m, args.temperature)
     
     #print(model_dict["E{:}".format(1)])
 
@@ -318,7 +318,7 @@ def main_worker(args):
     model_dict["C{:}".format(1)] = model_dict["C{:}".format(1)].cuda(args.gpu)
     model_dict["E{:}".format(2)] = model_dict["E{:}".format(2)].cuda(args.gpu)
     model_dict["C{:}".format(2)] = model_dict["C{:}".format(2)].cuda(args.gpu)
-    model_dict["C"] = model_dict["C"].cuda(args.gpu)
+    #model_dict["C"] = model_dict["C"].cuda(args.gpu)
 
 # define loss function (criterion) and optim_dict    
     criterion = nn.CrossEntropyLoss()   #.cuda(args.gpu)
@@ -354,8 +354,8 @@ def main_worker(args):
             prob_ATAC = tsne.fit_transform(embeddings_ATAC)
             prob_RNA = tsne.fit_transform(embeddings_RNA)
             ci_list = []
-            prob_ATAC = torch.from_numpy(prob_ATAC).cuda(args.gpu)
-            prob_RNA = torch.from_numpy(prob_RNA).cuda(args.gpu)
+            prob_ATAC = torch.from_numpy(embeddings_ATAC).cuda(args.gpu)
+            prob_RNA = torch.from_numpy(embeddings_RNA).cuda(args.gpu)
             ci_list.append(prob_ATAC)
             ci_list.append(prob_RNA)
             num_view = 2
@@ -373,9 +373,11 @@ def main_worker(args):
             # perform kmeans
             gt_labels = gt_labels_ATAC
 
+        embeddings = vcdn_feat
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
         if epoch > 0 and epoch%100 == 0 and args.cluster_name == "kmeans":
+
             
             data0 = []
             data1 = []
