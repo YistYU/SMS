@@ -20,6 +20,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.models as models
 import keras.backend as K
+from lifelines.utils import concordance_index
 
 import pcl.loader
 import pcl.builder
@@ -447,6 +448,9 @@ def main_worker(args):
             plt.subplot()
             # compute metrics
             seed = 0
+            idx = concordance_index(gt_labels, pd_labels)
+            print("C-index:")
+            print(idx)
             best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
             eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
             if eval_supervised_metrics["ARI"] > best_ari:
