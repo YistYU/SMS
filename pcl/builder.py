@@ -43,7 +43,7 @@ class MLPEncoder(nn.Module):
         return x
 
 
-class Classification_model(nn.Module):
+class Classifier_1(nn.Module):
     def __init__(self, 
                  num_genes,
                  num_hiddens,
