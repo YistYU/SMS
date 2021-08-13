@@ -23,7 +23,7 @@ import keras.backend as K
 
 import pcl.loader
 import pcl.builder
-
+import tensorflow as tf
 
 from sklearn import manifold, datasets
 from sklearn.cluster import KMeans
@@ -352,7 +352,8 @@ def main_worker(args):
             #print("embeddings")
             #print(embeddings)
             #print("TSNE Processing")
-            embeddings = K.concatenate(embeddings_ATAC, embeddings_RNA)
+            embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
+            pd_labels = KMeans(n_clusters=3 ,random_state=seed).fit(embeddings).labels_
             tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
             feat = tsne.fit_transform(embeddings)
             # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
@@ -371,16 +372,16 @@ def main_worker(args):
             # vcdn_feat = torch.reshape(x, (-1,pow(3, num_view)))
             # c = vcdn_feat.cpu().detach().numpy()
             # c = torch.from_numpy(c)
-            pd_labels = KMeans(n_clusters=3, random_state=seed).fit(feat).labels_
+            # pd_labels = KMeans(n_clusters=3, random_state=seed).fit(feat).labels_
             #print(embeddings)
             #print("embeddings after tsne")
             # perform kmeans
             gt_labels = gt_labels_ATAC
 
-        embeddings = prob
+        embeddings = feat
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
-        if epoch > 0 and epoch%100 == 0 and args.cluster_name == "kmeans":
+        if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
 
             
             data0 = []
