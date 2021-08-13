@@ -53,6 +53,10 @@ parser.add_argument('--obs_label_colname', type=str, default= None,
                     help='column name of the label in obs')
 
 # 2.hyper-parameters
+
+parser.add_argument('--num_view', type=int, default= 2,
+                    help='number of multi-omics views')
+
 parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 
