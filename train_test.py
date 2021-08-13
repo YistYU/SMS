@@ -351,8 +351,8 @@ def main_worker(args):
             #print(embeddings)
             #print("TSNE Processing")
             tsne = manifold.TSNE(n_components=3, init='pca', random_state=0)
-            embeddings_ATAC = tsne.fit_transform(embeddings_ATAC)
-            embeddings_RNA = tsne.fit_transform(embeddings_RNA)
+            prob_ATAC = tsne.fit_transform(embeddings_ATAC)
+            prob_RNA = tsne.fit_transform(embeddings_RNA)
             ci_list = []
             prob_ATAC = torch.from_numpy(prob_ATAC).cuda(args.gpu)
             prob_RNA = torch.from_numpy(prob_RNA).cuda(args.gpu)
@@ -361,21 +361,20 @@ def main_worker(args):
             num_view = 2
             for i in range(num_view):
                 ci_list[i] = torch.sigmoid(ci_list[i])
-            x = torch.reshape(torch.matmul(ci_list[0].unsqueeze(-1), ci_list[1].unsqueeze(1)),(-1,pow(3,2),1))
+            x = torch.reshape(torch.matmul(ci_list[0].unsqueeze(-1), ci_list[1].unsqueeze(1)),(-1,pow(3,1),1))
             for i in range(2,num_view):
-                x = torch.reshape(torch.matmul(x, ci_list[i].unsqueeze(1)),(3,i+1),1)
-            vcdn_feat = torch.reshape(x, (-1,pow(3,num_view)))
+                x = torch.reshape(torch.matmul(x, ci_list[i].unsqueeze(1)),(3,1),1)
+            vcdn_feat = torch.reshape(x, (-1,pow(3, 1)))
             c = vcdn_feat.cpu().detach().numpy()
-            print("c is here")
-            print(c)
             prob = F.softmax(c, dim=1).data.cpu().numpy()
             pd_labels = prob.argmax(1)
             #print(embeddings)
             #print("embeddings after tsne")
             # perform kmeans
             gt_labels = gt_labels_ATAC
-        tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-        embeddings = tsne.fit_transform(c)
+
+        #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+        #embeddings = tsne.fit_transform(c)
         if epoch > 0 and epoch%100 == 0 and args.cluster_name == "kmeans":
             
             data0 = []
