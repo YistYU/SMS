@@ -342,7 +342,7 @@ def main_worker(args):
         train_unsupervised_metrics_RNA = train(train_loader_RNA, model_dict["E{:}".format(2)], criterion, optim_dict["C{:}".format(2)], epoch, args)
         
         seed = 0
-        c = []
+        feat = []
         pd_labels = []
         gt_labels = []
         # inference log & supervised metrics
