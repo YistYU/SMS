@@ -91,9 +91,9 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
 parser.add_argument('--schedule', default=[100, 120], nargs='*', type=int,
                     help='learning rate schedule (when to drop lr by 10x), if use cos, then it will not be activated')
 
-parser.add_argument('--low_dim', default=128, type=int,
+parser.add_argument('--low_dim', default=3, type=int,
                     help='feature dimension (default: 128)')
-parser.add_argument('--pcl_r', default=1024, type=int,
+parser.add_argument('--pcl_r', default=256, type=int,
                     help='queue size; number of negative pairs; needs to be smaller than num_cluster (default: 16384)')
 parser.add_argument('--moco_m', default=0.999, type=float,
                     help='moco momentum of updating key encoder (default: 0.999)')
@@ -142,7 +142,8 @@ parser.add_argument('--exp_dir', default='./experiment_pcl', type=str,
 # CJY metric
 parser.add_argument('--save_dir', default='./result', type=str,
                     help='result saving directory')
-
+parser.add_argument('--label_csv_path', default='./data/BM/bm_label.csv', type=str,
+                    help='see label path')
 
 def main():
     args = parser.parse_args()
@@ -303,7 +304,7 @@ def main_worker(args):
     dim_hvcdn = pow(num_cluster, num_view)
     model_dict["E{:}".format(1)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster)
 
-    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster)
+    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_RNA.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster)
     model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.VCDN, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster, args.num_view, dim_hvcdn)
 
     #if num_view >= 2:
@@ -342,7 +343,15 @@ def main_worker(args):
         train_unsupervised_metrics_RNA = train(train_loader_RNA, model_dict["E{:}".format(2)], criterion, optim_dict["C{:}".format(2)], epoch, args)           
         embeddings_ATAC, gt_labels_ATAC = inference(eval_loader_ATAC, model_dict["E{:}".format(1)])
         embeddings_RNA, gt_labels_RNA = inference(eval_loader_RNA, model_dict["E{:}".format(2)])
+        #print("gt_labels_ATAC.shape{}".format(gt_labels_ATAC.shape))
+        #print(embeddings_ATAC.shape)
+       # print("shape of gt_labels {} \t {}".format(gt_labels_ATAC.shape, gt_labels_RNA.shape))
         embeddings = np.concatenate((embeddings_ATAC,embeddings_RNA),axis = 1)
+        #embeddings = np.vstack((gt_labels_ATAC,embeddings.T))
+        #embeddings = embeddings.T
+        #print("shape of embeddings after vstack{}".format(embeddings.shape))
+        label_frame = pd.read_csv(args.label_csv_path, index_col=0, header=0)
+        embeddings = sc.AnnData(X=embeddings, obs=label_frame)
         train_dataset_VCDN = pcl.loader.scMatrixInstance(
                                 adata=embeddings,
                                 obs_label_colname=obs_label_colname,
@@ -361,22 +370,26 @@ def main_worker(args):
             ci_list = []
             ci_list.append(embeddings_ATAC)
             ci_list.append(embeddings_RNA)
+            print(embeddings_ATAC)
+            print(embeddings_RNA)
             c = model_dict["C"](ci_list, is_eval = True)
+            print(c)
             prob = F.softmax(c, dim=1).data.cpu().numpy()
         pd_labels = prob.argmax(1)
         gt_labels = gt_labels_ATAC
-
-    # evaluation
-    if epoch>0 and epoch%10 == 0:
-        idx = concordance_index(gt_labels, pd_labels)
-        print("C-index: {}".format(idx))
-        best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
-        eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
-        if eval_supervised_metrics["ARI"] > best_ari:
-            best_ari = eval_supervised_metrics["ARI"]
-            best_eval_supervised_metrics = eval_supervised_metrics
-            best_pd_labels = pd_labels
-            print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
+        print(pd_labels)
+        print(gt_labels)   
+        # evaluation
+        if epoch>0 and epoch%10 == 0:
+            idx = concordance_index(gt_labels, pd_labels)
+            print("C-index: {}".format(idx))
+            best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
+            eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
+            if eval_supervised_metrics["ARI"] > best_ari:
+                best_ari = eval_supervised_metrics["ARI"]
+                best_eval_supervised_metrics = eval_supervised_metrics
+                best_pd_labels = pd_labels
+                print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -403,7 +416,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
-                
+        # print(images[0].shape)
+        # print(images[1].shape)
         # compute output
         output, target, output_proto, target_proto = model(im_q=images[0], im_k=images[1], cluster_result=None, index=index)
         

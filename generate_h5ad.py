@@ -174,10 +174,11 @@ def preprocess_csv_to_h5ad_VCDN(
     return adata
 
 def preprocess_csv_to_h5ad(
-        csv_path=None, input_h5ad_path=None, input_10X_path=None, ATAC_csv_path=None, RNA_csv_path=None, label_csv_path=None, save_h5ad_dir="./",
+        input_h5ad_path=None, input_10X_path=None, ATAC_csv_path=None, RNA_csv_path=None, label_csv_path=None, save_h5ad_dir="./",
         do_filter=False, do_log=False, do_select_hvg=False, do_norm=False, do_scale=False,
         drop_prob=0.0
 ):
+    print(RNA_csv_path)  
     # 1. read data from h5ad, 10X or csv files.
     if input_h5ad_path != None and input_10X_path == None and ATAC_csv_path == None:
         adata = sc.read_h5ad(input_h5ad_path)
@@ -193,16 +194,17 @@ def preprocess_csv_to_h5ad(
         _, input_10X_file_name = os.path.split(input_10X_path)
         save_file_name = input_10X_file_name + ".h5ad"
 
-    elif ATAC_csv_path != None and input_h5ad_path == None and input_10X_path == None:
+    if ATAC_csv_path != None and input_h5ad_path == None and input_10X_path == None:
+        print("in")
         # read the count matrix from the path
         ATAC_frame = pd.read_csv(ATAC_csv_path, index_col=0)
         RNA_frame = pd.read_csv(RNA_csv_path, index_col=0)
-        #print("ATAC shape:{}".format(ATAC_frame.shape))
-        #print("RNA shape:{}".format(RNA_frame.shape))
+        print("ATAC shape:{}".format(ATAC_frame.shape))
+        print("RNA shape:{}".format(RNA_frame.shape))
 
         if label_csv_path != None:
             label_frame = pd.read_csv(label_csv_path, index_col=0, header=0)
-            # print("labels shape:{}".format(label_frame.shape))
+            print("labels shape:{}".format(label_frame.shape))
             if ATAC_frame.shape[0] != label_frame.shape[0] or RNA_frame.shape[0] != label_frame.shape[0]:
                 raise Exception("The shapes of counts and labels do not match!")
             label_frame.rename(columns={'x':'label'},inplace=True)
@@ -218,14 +220,14 @@ def preprocess_csv_to_h5ad(
             adata = sc.AnnData(X=ATAC_frame, obs=label_frame)
             label_frame.index = RNA_frame.index
             rdata = sc.AnnData(X=RNA_frame, obs=label_frame)
-            #print("Read data from csv file: {}".format(ATAC_csv_path))
-            #print("Read data from csv file: {}".format(RNA_csv_path))
-            #print("Read label from csv file: {}".format(label_csv_path))
+            print("Read data from csv file: {}".format(ATAC_csv_path))
+            print("Read data from csv file: {}".format(RNA_csv_path))
+            print("Read label from csv file: {}".format(label_csv_path))
         else:
             adata = sc.AnnData(X=ATAC_frame)
             rdata = sc.AnnData(X=RNA_frame)
-            #print("Read ATAC data from csv file: {}".format(ATAC_csv_path))
-            #print("Read RNA data from csv file: {}".format(RNA_csv_path))
+            print("Read ATAC data from csv file: {}".format(ATAC_csv_path))
+            print("Read RNA data from csv file: {}".format(RNA_csv_path))
 
         _, ATAC_file_name = os.path.split(ATAC_csv_path)
         _, RNA_file_name = os.path.split(RNA_csv_path)
@@ -325,8 +327,8 @@ def preprocess_csv_to_h5ad(
 
         adata.write(save_ATAC_path)
         rdata.write(save_RNA_path)
-        #print("Successfully generate preprocessed file: {}".format(save_ATAC_name))
-        #print("Successfully generate preprocessed file: {}".format(save_RNA_name))
+        print("Successfully generate preprocessed file: {}".format(save_ATAC_name))
+        print("Successfully generate preprocessed file: {}".format(save_RNA_name))
 
     return adata, rdata, label_frame.index
 

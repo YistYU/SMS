@@ -39,6 +39,7 @@ class VCDN(nn.Module):
     def forward(self, in_list):
         num_view = len(in_list)
         for i in range(num_view):
+            in_list[i] = torch.tensor(in_list[i]).cuda()
             in_list[i] = torch.sigmoid(in_list[i])
         x = torch.reshape(torch.matmul(in_list[0].unsqueeze(-1), in_list[1].unsqueeze(1)),(-1,pow(self.num_cls,2),1))
         for i in range(2,num_view):
@@ -63,8 +64,9 @@ class MLPEncoder(nn.Module):
     
     def forward(self, x):
 
+        print(x)
         x = self.encoder(x)
-
+        print(x)
         return x
 
 
@@ -96,11 +98,12 @@ class MoCo(nn.Module):
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
-
+        dim = 3
+        r = r
         # create the queue
         self.register_buffer("queue", torch.randn(dim, r))
         self.queue = nn.functional.normalize(self.queue, dim=0)
-
+        #print("self_queue {}".format(self.queue.shape))
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
     @torch.no_grad()
@@ -117,6 +120,7 @@ class MoCo(nn.Module):
         # keys = concat_all_gather(keys)
 
         batch_size = keys.shape[0]
+        #print(batch_size)
 
         ptr = int(self.queue_ptr)
         assert self.r % batch_size == 0  # for simplicity
@@ -138,7 +142,7 @@ class MoCo(nn.Module):
         Output:
             logits, targets, proto_logits, proto_targets
         """
-        
+       	#print("im_q shape{}".format(im_q.shape)) 
         if is_eval:
             k = self.encoder_k(im_q)  
             k = nn.functional.normalize(k, dim=1)            
@@ -152,29 +156,34 @@ class MoCo(nn.Module):
             # im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
             k = self.encoder_k(im_k)  # keys: NxC
-            # print(k.shape)
+            #print(k.shape)
             k = nn.functional.normalize(k, dim=1)
+            #print("after norm {}".format(k.shape))
 
             # undo shuffle
             #k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
         q = self.encoder_q(im_q)  # queries: NxC
+        #print(q.shape)
         q = nn.functional.normalize(q, dim=1)
+        #print("after norm {}".format(q.shape))
         
         # compute logits
         # Einstein sum is more intuitive
         # positive logits: Nx1
+        #print(self.queue.shape)
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+        #print(l_pos.shape)
         # negative logits: Nxr
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
-
+        print(l_neg.shape)
         # logits: Nx(1+r)
         logits = torch.cat([l_pos, l_neg], dim=1)
-
+        
         # apply temperature
         logits /= self.T
-
+        #print(logits.shape)
         # labels: positive key indicators
         labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
@@ -190,7 +199,7 @@ class MoCo_VCDN(nn.Module):
     
     def __init__(self, base_encoder, num_genes=10000,  dim=16, r=512, m=0.999, T=0.2, num_cluster=3, num_view=2, dim_hvcdn=9):
         
-        super(MoCo, self).__init__()
+        super(MoCo_VCDN, self).__init__()
 
         self.r = r
         self.m = m
@@ -213,7 +222,7 @@ class MoCo_VCDN(nn.Module):
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
-        """
+        """ 
         Momentum update of the key encoder
         """
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
@@ -236,14 +245,13 @@ class MoCo_VCDN(nn.Module):
         self.queue_ptr[0] = ptr
 
     def forward(self, im_q, im_k=None, is_eval=False, cluster_result=None, index=None):
-        im_q = np.hsplit(im_q, 2)
-        im_k = np.hsplit(im_k, 2)
-
+        
         if is_eval:
             k = self.encoder_k(im_q)  
             k = nn.functional.normalize(k, dim=1)            
             return k
-        
+        im_q = np.hsplit(im_q, 2)
+        im_k = np.hsplit(im_k, 2)
         # compute key features
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
