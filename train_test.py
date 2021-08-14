@@ -380,7 +380,7 @@ def main_worker(args):
         print(pd_labels)
         print(gt_labels)   
         # evaluation
-        if epoch>0 and epoch%10 == 0:
+        if epoch>=0:
             idx = concordance_index(gt_labels, pd_labels)
             print("C-index: {}".format(idx))
             best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None

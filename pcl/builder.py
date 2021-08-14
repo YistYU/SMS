@@ -64,9 +64,9 @@ class MLPEncoder(nn.Module):
     
     def forward(self, x):
 
-        print(x)
+        print("before MLPEncoder{}".format(x))
         x = self.encoder(x)
-        print(x)
+        print("end MLPEncoder{}".format(x))
         return x
 
 
