@@ -220,11 +220,11 @@ def main_worker(args):
         # without resize, it's better to remove crop
         
         # mask
-        'mask_percentage': 0.2,
+        'mask_percentage': 0.05,
         'apply_mask_prob': args.aug_prob,
         
         # (Add) gaussian noise
-        'noise_percentage': 0.8,
+        'noise_percentage': 0.4,
         'sigma': 0.2,
         'apply_noise_prob': args.aug_prob,
 
@@ -233,11 +233,11 @@ def main_worker(args):
         'apply_swap_prob': args.aug_prob,
         
         # cross over with 1
-        'cross_percentage': 0.25,
+        'cross_percentage': 0.2,
         'apply_cross_prob': args.aug_prob,
         
         # cross over with many
-        'change_percentage': 0.25,
+        'change_percentage': 0.2,
         'apply_mutation_prob': args.aug_prob
     }
 
