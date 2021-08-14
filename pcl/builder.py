@@ -50,13 +50,15 @@ class VCDN(nn.Module):
 
 class MLPEncoder(nn.Module):
 
-    def __init__(self, num_genes=10000, num_hiddens=40, p_drop=0.0):
+    def __init__(self, num_genes=10000, num_hiddens=40, p_drop=0.0, in_dim, out_dim):
         super().__init__()
         self.encoder = nn.Sequential(
             full_block(num_genes, 256, p_drop),
             full_block(256, num_hiddens, p_drop),
+            nn.Linear(in_dim, out_dim)
             # add one block for features
         )
+        self.encoder.apply(xavier_init)
 
     
     def forward(self, x):
@@ -66,22 +68,13 @@ class MLPEncoder(nn.Module):
         return x
 
 
-class Classifier_1(nn.Module):
-    def __init__(self, in_dim, out_dim):
-        super().__init__()
-        self.clf = nn.Sequential(nn.Linear(in_dim, out_dim))
-        self.clf.apply(xavier_init)
-
-    def forward(self, x):
-        x = self.clf(x)
-        return x
 
 class MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder, base_classifier, num_genes=10000,  dim=16, r=512, m=0.999, T=0.2, in_dim=40, num_cluster=3):
+    def __init__(self, base_encoder, num_genes=10000,  dim=16, r=512, m=0.999, T=0.2, in_dim=40, num_cluster=3):
         """
         dim: feature dimension (default: 16)
         r: queue size; number of negative samples/prototypes (default: 512)
@@ -97,13 +90,8 @@ class MoCo(nn.Module):
 
         # create the encoders
         # num_classes is the output fc dimension
-        self.classifier_q = base_classifier(in_dim, num_cluster)
-        self.classifier_k = base_classifier(in_dim, num_cluster)
-        self.encoder_q = base_encoder(num_genes=num_genes, num_hiddens=dim)
-        self.encoder_k = base_encoder(num_genes=num_genes, num_hiddens=dim)
-
-        self.encoder_q = self.classifier_q(self.encoder_q)
-        self.encoder_k = self.classifier_k(self.encoder_k)
+        self.encoder_q = base_encoder(num_genes=num_genes, num_hiddens=dim, in_dim = in_dim, out_dim = num_cluster)
+        self.encoder_k = base_encoder(num_genes=num_genes, num_hiddens=dim, in_dim = in_dim, out_dim = num_cluster)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize

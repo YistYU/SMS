@@ -301,10 +301,10 @@ def main_worker(args):
     num_cluster=args.num_cluster
     num_view=args.num_view
     dim_hvcdn = pow(num_cluster, num_view)
-    model_dict["E{:}".format(1)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, pcl.builder.Classifier_1, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster)
+    model_dict["E{:}".format(1)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster)
 
-    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, pcl.builder.Classifier_1, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster)
-    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.VCDN, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster, args.num_view, dim_hvcdn)
+    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster)
+    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.VCDN, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.num_cluster, args.num_view, dim_hvcdn)
 
     #if num_view >= 2:
     #    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.MLPEncoder_VCDN, num_view, num_cluster, dim_hvcdn, args.low_dim, args.pcl_r, args.moco_m, args.temperature)
