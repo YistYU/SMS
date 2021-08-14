@@ -370,12 +370,12 @@ def main_worker(args):
             ci_list = []
             ci_list.append(embeddings_ATAC)
             ci_list.append(embeddings_RNA)
-            print(embeddings_ATAC)
-            print(embeddings_RNA)
+            print("embeddings_ATAC {}".format(embeddings_ATAC))
+            print("embeddings_RNA {}".format(embeddings_RNA))
             c = model_dict["C"](ci_list, is_eval = True)
-            print(c)
-            prob = F.softmax(c, dim=1).data.cpu().numpy()
-        pd_labels = prob.argmax(1)
+            print("VCDN output {}".format(c))
+        seed = 0
+        pd_labels = KMeans(n_clusters=3, random_state=args.seed).fit(c).labels_
         gt_labels = gt_labels_ATAC
         print(pd_labels)
         print(gt_labels)   

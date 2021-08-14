@@ -30,9 +30,8 @@ class VCDN(nn.Module):
         super().__init__()
         self.num_cls = num_cls
         self.model = nn.Sequential(
-            nn.Linear(pow(num_cls, num_view), hvcdn_dim),
-            nn.LeakyReLU(0.25),
-            nn.Linear(hvcdn_dim, num_cls)
+            nn.Linear(40, 40),
+            nn.LeakyReLU(0.25)
         )
         self.model.apply(xavier_init)
         
@@ -55,8 +54,7 @@ class MLPEncoder(nn.Module):
         super().__init__()
         self.encoder = nn.Sequential(
             full_block(num_genes, 256, p_drop),
-            full_block(256, num_hiddens, p_drop),
-            nn.Linear(num_hiddens, out_dim)
+            full_block(256, num_hiddens, p_drop)
             # add one block for features
         )
         self.encoder.apply(xavier_init)
@@ -76,7 +74,7 @@ class MoCo(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder, num_genes=10000,  dim=16, r=512, m=0.999, T=0.2, num_cluster=3):
+    def __init__(self, base_encoder, num_genes=10000,  dim=40, r=512, m=0.999, T=0.2, num_cluster=3):
         """
         dim: feature dimension (default: 16)
         r: queue size; number of negative samples/prototypes (default: 512)
@@ -98,7 +96,7 @@ class MoCo(nn.Module):
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
-        dim = 3
+        dim = 40
         r = r
         # create the queue
         self.register_buffer("queue", torch.randn(dim, r))
