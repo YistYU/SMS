@@ -115,12 +115,15 @@ parser.add_argument("--aug_prob", type=float, default=0.5,
 parser.add_argument('--cluster_name', default='kmeans', type=str,
                     help='name of clustering method', dest="cluster_name")
 
-parser.add_argument('--num_cluster', default=-1, type=int,
+parser.add_argument('--num_cluster', default=3, type=int,
                     help='number of clusters', dest="num_cluster")
 
 # random
 parser.add_argument('--seed', default=0, type=int,
                     help='seed for initializing training. ')
+
+parser.add_argument('--in_dim', default=40, type=int,
+                    help='input classifier dim')
 
 # gpu
 parser.add_argument('--gpu', default=0, type=int,   #None
@@ -297,14 +300,11 @@ def main_worker(args):
     model_dict = {}
     num_cluster=args.num_cluster
     num_view=args.num_view
-    dim_hvcdn = 9
-    model_dict["E{:}".format(1)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature)
-    #print(model_dict["E{:}".format(1)])
-    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, int(train_dataset_RNA.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature)
-    #print(model_dict["E{:}".format(2)])
-    model_dict["C{:}".format(1)] = pcl.builder.Classifier_1(int(train_dataset_ATAC.num_genes), num_hiddens=128, p_drop=0.0, num_clusters=3)
-    model_dict["C{:}".format(2)] = pcl.builder.Classifier_1(int(train_dataset_ATAC.num_genes), num_hiddens=128, p_drop=0.0, num_clusters=3)
-    #model_dict["V"] = pcl.builder.VCDN(num_view=2, num_cls=3, hvcdn_dim=9)
+    dim_hvcdn = pow(num_cluster, num_view)
+    model_dict["E{:}".format(1)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, pcl.builder.Classifier_1, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster)
+
+    model_dict["E{:}".format(2)] = pcl.builder.MoCo(pcl.builder.MLPEncoder, pcl.builder.Classifier_1, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster)
+    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.VCDN, int(train_dataset_ATAC.num_genes),args.low_dim, args.pcl_r, args.moco_m, args.temperature, args.in_dim, args.num_cluster, args.num_view, dim_hvcdn)
 
     #if num_view >= 2:
     #    model_dict["C"] = pcl.builder.MoCo_VCDN(pcl.builder.MLPEncoder_VCDN, num_view, num_cluster, dim_hvcdn, args.low_dim, args.pcl_r, args.moco_m, args.temperature)
@@ -318,17 +318,16 @@ def main_worker(args):
 
     
     model_dict["E{:}".format(1)] = model_dict["E{:}".format(1)].cuda(args.gpu)
-    model_dict["C{:}".format(1)] = model_dict["C{:}".format(1)].cuda(args.gpu)
     model_dict["E{:}".format(2)] = model_dict["E{:}".format(2)].cuda(args.gpu)
-    model_dict["C{:}".format(2)] = model_dict["C{:}".format(2)].cuda(args.gpu)
-    #model_dict["C"] = model_dict["C"].cuda(args.gpu)
+    model_dict["C"] = model_dict["C"].cuda(args.gpu)
 
 # define loss function (criterion) and optim_dict    
     criterion = nn.CrossEntropyLoss()   #.cuda(args.gpu)
     optim_dict = {}
-    optim_dict["C{:}".format(1)] = torch.optim.SGD(list(model_dict["E{:}".format(1)].parameters())+list(model_dict["C{:}".format(1)].parameters()), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    optim_dict["C{:}".format(1)] = torch.optim.SGD(model_dict["E{:}".format(1)].parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
-    optim_dict["C{:}".format(2)] = torch.optim.SGD(list(model_dict["E{:}".format(2)].parameters())+list(model_dict["C{:}".format(2)].parameters()), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    optim_dict["C{:}".format(2)] = torch.optim.SGD(model_dict["E{:}".format(2)].parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    optim_dict["C"] = torch.optim.SGD(model_dict["C"].parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # 2. Train Encoder
     # train the model
@@ -340,125 +339,44 @@ def main_worker(args):
 
         # train for one epoch
         train_unsupervised_metrics_ATAC = train(train_loader_ATAC, model_dict["E{:}".format(1)], criterion, optim_dict["C{:}".format(1)], epoch, args)
-        train_unsupervised_metrics_RNA = train(train_loader_RNA, model_dict["E{:}".format(2)], criterion, optim_dict["C{:}".format(2)], epoch, args)
+        train_unsupervised_metrics_RNA = train(train_loader_RNA, model_dict["E{:}".format(2)], criterion, optim_dict["C{:}".format(2)], epoch, args)           
+        embeddings_ATAC, gt_labels_ATAC = inference(eval_loader_ATAC, model_dict["E{:}".format(1)])
+        embeddings_RNA, gt_labels_RNA = inference(eval_loader_RNA, model_dict["E{:}".format(2)])
+        embeddings = np.concatenate((embeddings_ATAC,embeddings_RNA),axis = 1)
+        train_dataset_VCDN = pcl.loader.scMatrixInstance(
+                                adata=embeddings,
+                                obs_label_colname=obs_label_colname,
+                                transform=True,
+                                args_transformation=args_transformation
+                                )
+        train_loader_VCDN = torch.utils.data.DataLoader(
+                                train_dataset_VCDN, batch_size=args.batch_size, shuffle=(train_sampler is None),
+                                num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)            
+        train_unsupervised_metrics_VCDN = train(train_loader_VCDN, model_dict["C"], criterion, optim_dict["C"], epoch, args)
         
-        seed = 0
-        feat = []
-        pd_labels = []
-        gt_labels = []
-        # inference log & supervised metrics
-        if epoch % args.eval_freq == 0 or epoch == args.epochs - 1:
-            embeddings_ATAC, gt_labels_ATAC = inference(eval_loader_ATAC, model_dict["E{:}".format(1)])
-            embeddings_RNA, gt_labels_RNA = inference(eval_loader_RNA, model_dict["E{:}".format(2)])
-            #print("embeddings")
-            #print(embeddings)
-            #print("TSNE Processing")
-            embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
-            pd_labels = KMeans(n_clusters=3 ,random_state=seed).fit(embeddings).labels_
-            tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-            feat = tsne.fit_transform(embeddings)
-            # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
-            # prob_RNA = tsne.fit_transform(embeddings_RNA)
-            # ci_list = []
-            # prob_ATAC = torch.from_numpy(prob_ATAC).cuda(args.gpu)
-            # prob_RNA = torch.from_numpy(prob_RNA).cuda(args.gpu)
-            # ci_list.append(prob_ATAC)
-            # ci_list.append(prob_RNA)
-            # num_view = 2
-            # for i in range(num_view):
-            #     ci_list[i] = torch.sigmoid(ci_list[i])
-            # x = torch.reshape(torch.matmul(ci_list[0].unsqueeze(-1), ci_list[1].unsqueeze(1)),(-1,pow(3,2),1))
-            # for i in range(2,num_view):
-            #     x = torch.reshape(torch.matmul(x, ci_list[i].unsqueeze(1)),(3,i+1),1)
-            # vcdn_feat = torch.reshape(x, (-1,pow(3, num_view)))
-            # c = vcdn_feat.cpu().detach().numpy()
-            # c = torch.from_numpy(c)
-            # pd_labels = KMeans(n_clusters=3, random_state=seed).fit(feat).labels_
-            #print(embeddings)
-            #print("embeddings after tsne")
-            # perform kmeans
-            gt_labels = gt_labels_ATAC
+        # VCDN Prediction
+        if num_view >= 2:
+            optim_dict["C"].zero_grad()
+            c_loss = 0
+            ci_list = []
+            ci_list.append(embeddings_ATAC)
+            ci_list.append(embeddings_RNA)
+            c = model_dict["C"](ci_list, is_eval = True)
+            prob = F.softmax(c, dim=1).data.cpu().numpy()
+        pd_labels = prob.argmax(1)
+        gt_labels = gt_labels_ATAC
 
-        embeddings = feat
-        #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-        #embeddings = tsne.fit_transform(c)
-        if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
-
-            
-            data0 = []
-            data1 = []
-            data2 = []
-            #data3 = []
-            #data4 = []
-            for i in range(len(gt_labels)):
-                if pd_labels[i] == 0:
-                    data0.append(embeddings[i])
-                if pd_labels[i] == 1:
-                    data1.append(embeddings[i])
-                if pd_labels[i] == 2:
-                    data2.append(embeddings[i])
-                #if pd_labels[i] == 3:
-                #    data3.append(embeddings[i])
-                #if pd_labels[i] == 4:
-                #    data4.append(embeddings[i])
-            # Plot figure
-            data0 = np.array(data0)
-            data1 = np.array(data1)
-            data2 = np.array(data2)
-            #data3 = np.array(data3)
-            #data4 = np.array(data4)
-            fig = plt.figure(1)
-            plt.subplot(211)
-            plt.scatter(data0[:,0], data0[:,1], c='r', s=6)
-            plt.scatter(data1[:,0], data1[:,1], c='b', s=6)
-            plt.scatter(data2[:,0], data2[:,1], c='g', s=6)
-            #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
-            #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
-            plt.title("ALgorithm Classified data", fontsize = 10)
-            data0 = []
-            data1 = []
-            data2 = []
-            #data3 = []
-            #data4 = []
-            for i in range(len(gt_labels)):
-                if gt_labels[i] == 0:
-                    data0.append(embeddings[i])
-                if gt_labels[i] == 1:
-                    data1.append(embeddings[i])
-                if gt_labels[i] == 2:
-                    data2.append(embeddings[i])
-                #if gt_labels[i] == 3:
-                #    data3.append(embeddings[i])
-                #if gt_labels[i] == 4:
-                #    data4.append(embeddings[i])
-            # Plot figure
-            data0 = np.array(data0)
-            data1 = np.array(data1)
-            data2 = np.array(data2)
-            #data3 = np.array(data3)
-            #data4 = np.array(data4)
-            plt.subplot(212)
-            plt.scatter(data0[:,0], data0[:,1], c='r', s=6)
-            plt.scatter(data1[:,0], data1[:,1], c='b', s=6)
-            plt.scatter(data2[:,0], data2[:,1], c='g', s=6)
-            #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
-            #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
-            plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_Kmeans_changeData'  +'.pdf')
-            plt.subplot()
-            # compute metrics
-            seed = 0
-            idx = concordance_index(gt_labels, pd_labels)
-            print("C-index:")
-            print(idx)
-            best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
-            eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
-            if eval_supervised_metrics["ARI"] > best_ari:
-                best_ari = eval_supervised_metrics["ARI"]
-                best_eval_supervised_metrics = eval_supervised_metrics
-                best_pd_labels = pd_labels
-                print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
-
+    # evaluation
+    if epoch>0 and epoch%10 == 0:
+        idx = concordance_index(gt_labels, pd_labels)
+        print("C-index: {}".format(idx))
+        best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
+        eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
+        if eval_supervised_metrics["ARI"] > best_ari:
+            best_ari = eval_supervised_metrics["ARI"]
+            best_eval_supervised_metrics = eval_supervised_metrics
+            best_pd_labels = pd_labels
+            print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -520,7 +438,7 @@ def inference(eval_loader, model):
     for i, (images, index, label) in enumerate(eval_loader):
         images = images.cuda()
         with torch.no_grad():
-            feat = model(images, is_eval=True) 
+            feat = model(images, is_eval=True)
         feat_pred = feat.data.cpu().numpy()
         label_true = label
         features.append(feat_pred)
