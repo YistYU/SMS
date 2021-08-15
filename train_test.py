@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 matplotlib.use('Agg')
+import umap
 
 import torch
 import torch.nn as nn
@@ -355,8 +356,12 @@ def main_worker(args):
             #print("TSNE Processing")
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
             pd_labels = KMeans(n_clusters=3 ,random_state=seed).fit(embeddings).labels_
-            tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-            feat = tsne.fit_transform(embeddings)
+            # umap
+            reducer = umap.UMAP(random_state=42)
+            embeddings = reducer.fit_transform(embeddings)
+            # tsne
+            # tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+            # feat = tsne.fit_transform(embeddings)
             # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
             # prob_RNA = tsne.fit_transform(embeddings_RNA)
             # ci_list = []
@@ -379,7 +384,6 @@ def main_worker(args):
             # perform kmeans
             gt_labels = gt_labels_ATAC
 
-        embeddings = feat
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
         if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
