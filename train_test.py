@@ -356,13 +356,13 @@ def main_worker(args):
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
             pd_labels = KMeans(n_clusters=5 ,random_state=seed).fit(embeddings).labels_
             # umap
-            reducer = umap.UMAP(random_state=42)
-            embeddings = reducer.fit_transform(embeddings)
-            print(pd_labels)
-            print(embeddings)
+            #reducer = umap.UMAP(random_state=42)
+            #embeddings = reducer.fit_transform(embeddings)
+            #print(pd_labels)
+            #print(embeddings)
             # tsne
-            # tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-            # feat = tsne.fit_transform(embeddings)
+            tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+            embeddings = tsne.fit_transform(embeddings)
             # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
             # prob_RNA = tsne.fit_transform(embeddings_RNA)
             # ci_list = []
@@ -453,7 +453,7 @@ def main_worker(args):
             #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
             #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
             #plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_Kmeans_changeData' + str(epoch) + '.pdf')
+            plt.savefig('Result_After_tsne_changeData' + str(epoch) + '.pdf')
             plt.subplot()
             # compute metrics
             seed = 0
