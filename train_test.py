@@ -354,15 +354,15 @@ def main_worker(args):
             #print(embeddings)
             #print("TSNE Processing")
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
-            pd_labels = KMeans(n_clusters=5 ,random_state=seed).fit(embeddings).labels_
+            pd_labels = KMeans(n_clusters=3,random_state=seed).fit(embeddings).labels_
             # umap
-            #reducer = umap.UMAP(random_state=42)
-            #embeddings = reducer.fit_transform(embeddings)
+            reducer = umap.UMAP(random_state=42)
+            embeddings = reducer.fit_transform(embeddings)
             #print(pd_labels)
             #print(embeddings)
             # tsne
-            tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-            embeddings = tsne.fit_transform(embeddings)
+            #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+            #embeddings = tsne.fit_transform(embeddings)
             # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
             # prob_RNA = tsne.fit_transform(embeddings_RNA)
             # ci_list = []
@@ -383,7 +383,7 @@ def main_worker(args):
             #print(embeddings)
             #print("embeddings after tsne")
             # perform kmeans
-            # gt_labels = gt_labels_ATAC
+            gt_labels = gt_labels_ATAC
 
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
@@ -392,8 +392,8 @@ def main_worker(args):
             data0 = []
             data1 = []
             data2 = []
-            data3 = []
-            data4 = []
+            #data3 = []
+            #data4 = []
             #print(pd_labels)
             #print(len(pd_labels))
             for i in range(0, len(pd_labels)):
@@ -404,25 +404,26 @@ def main_worker(args):
                     data1.append(embeddings[i])
                 if pd_labels[i] == 2:
                     data2.append(embeddings[i])
-                if pd_labels[i] == 3:
-                    data3.append(embeddings[i])
-                if pd_labels[i] == 4:
-                    data4.append(embeddings[i])
+                #if pd_labels[i] == 3:
+                #    data3.append(embeddings[i])
+                #if pd_labels[i] == 4:
+                #    data4.append(embeddings[i])
             # Plot figure
             data0 = np.array(data0)
             data1 = np.array(data1)
             data2 = np.array(data2)
-            data3 = np.array(data3)
-            data4 = np.array(data4)
+            #data3 = np.array(data3)
+            #data4 = np.array(data4)
             fig = plt.figure(1)
             plt.xlabel('X')
             plt.ylabel('Y')
-            print(data0.shape)
+            #print(data0.shape)
+            plt.subplot(211)
             plt.scatter(data0[:,0], data0[:,1], c='#BC8F8F', s=5, alpha=0.6)
             plt.scatter(data1[:,0], data1[:,1], c='#BDB761', s=5, alpha=0.6)
             plt.scatter(data2[:,0], data2[:,1], c='#008B8B', s=5, alpha=0.6)
-            plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=5, alpha=0.6)
-            plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=5, alpha=0.6)
+            #plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=5, alpha=0.6)
+            #plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=5, alpha=0.6)
             plt.title("Clustered Data", fontsize = 6)
             #data0 = []
             #data1 = []
@@ -453,13 +454,13 @@ def main_worker(args):
             #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
             #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
             #plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_tsne_changeData' + str(epoch) + '.pdf')
+            plt.savefig('Result_After_tsne_bm' + str(epoch) + '.pdf')
             plt.subplot()
             # compute metrics
             seed = 0
-            #idx = concordance_index(gt_labels, pd_labels)
-            #print("C-index:")
-            #print(idx)
+            idx = concordance_index(gt_labels, pd_labels)
+            print("C-index:")
+            print(idx)
             best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
             #eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
             #if eval_supervised_metrics["ARI"] > best_ari:
