@@ -387,19 +387,19 @@ def main_worker(args):
 
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
-        if epoch > 0 and epoch%3 == 0 and args.cluster_name == "kmeans":
+        if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
     
             data0 = []
             data1 = []
             data2 = []
             data3 = []
             data4 = []
-            print(pd_labels)
-            print(len(pd_labels))
+            #print(pd_labels)
+            #print(len(pd_labels))
             for i in range(0, len(pd_labels)):
                 if pd_labels[i] == 0:
                     data0.append(embeddings[i])
-                    print("in")
+                    #print("in")
                 if pd_labels[i] == 1:
                     data1.append(embeddings[i])
                 if pd_labels[i] == 2:
@@ -418,11 +418,11 @@ def main_worker(args):
             plt.xlabel('X')
             plt.ylabel('Y')
             print(data0.shape)
-            plt.scatter(data0[:,0], data0[:,1], c='#BC8F8F', s=4, alpha=0.4)
-            plt.scatter(data1[:,0], data1[:,1], c='#BDB761', s=4, alpha=0.4)
-            plt.scatter(data2[:,0], data2[:,1], c='#008B8B', s=4, alpha=0.4)
-            plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=4, alpha=0.4)
-            plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=4, alpha=0.4)
+            plt.scatter(data0[:,0], data0[:,1], c='#BC8F8F', s=5, alpha=0.6)
+            plt.scatter(data1[:,0], data1[:,1], c='#BDB761', s=5, alpha=0.6)
+            plt.scatter(data2[:,0], data2[:,1], c='#008B8B', s=5, alpha=0.6)
+            plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=5, alpha=0.6)
+            plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=5, alpha=0.6)
             plt.title("Clustered Data", fontsize = 6)
             #data0 = []
             #data1 = []
