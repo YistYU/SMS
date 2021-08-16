@@ -330,7 +330,7 @@ def main_worker(args):
     optim_dict["C{:}".format(1)] = torch.optim.SGD(list(model_dict["E{:}".format(1)].parameters())+list(model_dict["C{:}".format(1)].parameters()), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     optim_dict["C{:}".format(2)] = torch.optim.SGD(list(model_dict["E{:}".format(2)].parameters())+list(model_dict["C{:}".format(2)].parameters()), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-
+    pd_labels = []    
     # 2. Train Encoder
     # train the model
     for epoch in range(args.start_epoch, args.epochs):
@@ -345,7 +345,6 @@ def main_worker(args):
         
         seed = 0
         feat = []
-        pd_labels = []
         gt_labels = []
         # inference log & supervised metrics
         if epoch % args.eval_freq == 0 or epoch == args.epochs - 1:
@@ -355,10 +354,12 @@ def main_worker(args):
             #print(embeddings)
             #print("TSNE Processing")
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
-            pd_labels = KMeans(n_clusters=3 ,random_state=seed).fit(embeddings).labels_
+            pd_labels = KMeans(n_clusters=5 ,random_state=seed).fit(embeddings).labels_
             # umap
             reducer = umap.UMAP(random_state=42)
             embeddings = reducer.fit_transform(embeddings)
+            print(pd_labels)
+            print(embeddings)
             # tsne
             # tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
             # feat = tsne.fit_transform(embeddings)
@@ -382,86 +383,90 @@ def main_worker(args):
             #print(embeddings)
             #print("embeddings after tsne")
             # perform kmeans
-            gt_labels = gt_labels_ATAC
+            # gt_labels = gt_labels_ATAC
 
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
-        if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
-
-            
+        if epoch > 0 and epoch%3 == 0 and args.cluster_name == "kmeans":
+    
             data0 = []
             data1 = []
             data2 = []
-            #data3 = []
-            #data4 = []
-            for i in range(len(gt_labels)):
+            data3 = []
+            data4 = []
+            print(pd_labels)
+            print(len(pd_labels))
+            for i in range(0, len(pd_labels)):
                 if pd_labels[i] == 0:
                     data0.append(embeddings[i])
+                    print("in")
                 if pd_labels[i] == 1:
                     data1.append(embeddings[i])
                 if pd_labels[i] == 2:
                     data2.append(embeddings[i])
-                #if pd_labels[i] == 3:
-                #    data3.append(embeddings[i])
-                #if pd_labels[i] == 4:
-                #    data4.append(embeddings[i])
+                if pd_labels[i] == 3:
+                    data3.append(embeddings[i])
+                if pd_labels[i] == 4:
+                    data4.append(embeddings[i])
             # Plot figure
             data0 = np.array(data0)
             data1 = np.array(data1)
             data2 = np.array(data2)
-            #data3 = np.array(data3)
-            #data4 = np.array(data4)
+            data3 = np.array(data3)
+            data4 = np.array(data4)
             fig = plt.figure(1)
-            plt.subplot(211)
-            plt.scatter(data0[:,0], data0[:,1], c='r', s=6)
-            plt.scatter(data1[:,0], data1[:,1], c='b', s=6)
-            plt.scatter(data2[:,0], data2[:,1], c='g', s=6)
-            #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
-            #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
-            plt.title("ALgorithm Classified data", fontsize = 10)
-            data0 = []
-            data1 = []
-            data2 = []
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            print(data0.shape)
+            plt.scatter(data0[:,0], data0[:,1], c='#BC8F8F', s=4, alpha=0.4)
+            plt.scatter(data1[:,0], data1[:,1], c='#BDB761', s=4, alpha=0.4)
+            plt.scatter(data2[:,0], data2[:,1], c='#008B8B', s=4, alpha=0.4)
+            plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=4, alpha=0.4)
+            plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=4, alpha=0.4)
+            plt.title("Clustered Data", fontsize = 6)
+            #data0 = []
+            #data1 = []
+            #data2 = []
             #data3 = []
             #data4 = []
-            for i in range(len(gt_labels)):
-                if gt_labels[i] == 0:
-                    data0.append(embeddings[i])
-                if gt_labels[i] == 1:
-                    data1.append(embeddings[i])
-                if gt_labels[i] == 2:
-                    data2.append(embeddings[i])
+            #for i in range(len(gt_labels)):
+            #    if gt_labels[i] == 0:
+            #        data0.append(embeddings[i])
+            #    if gt_labels[i] == 1:
+            #        data1.append(embeddings[i])
+            #    if gt_labels[i] == 2:
+            #        data2.append(embeddings[i])
                 #if gt_labels[i] == 3:
                 #    data3.append(embeddings[i])
                 #if gt_labels[i] == 4:
                 #    data4.append(embeddings[i])
             # Plot figure
-            data0 = np.array(data0)
-            data1 = np.array(data1)
-            data2 = np.array(data2)
+            #data0 = np.array(data0)
+            #data1 = np.array(data1)
+            #data2 = np.array(data2)
             #data3 = np.array(data3)
             #data4 = np.array(data4)
-            plt.subplot(212)
-            plt.scatter(data0[:,0], data0[:,1], c='r', s=6)
-            plt.scatter(data1[:,0], data1[:,1], c='b', s=6)
-            plt.scatter(data2[:,0], data2[:,1], c='g', s=6)
+            #plt.subplot(212)
+            #plt.scatter(data0[:,0], data0[:,1], c='r', s=6)
+            #plt.scatter(data1[:,0], data1[:,1], c='b', s=6)
+            #plt.scatter(data2[:,0], data2[:,1], c='g', s=6)
             #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
             #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
-            plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_Kmeans_changeData'  +'.pdf')
+            #plt.title("Correct Classified data", fontsize = 10)
+            plt.savefig('Result_After_Kmeans_changeData' + str(epoch) + '.pdf')
             plt.subplot()
             # compute metrics
             seed = 0
-            idx = concordance_index(gt_labels, pd_labels)
-            print("C-index:")
-            print(idx)
+            #idx = concordance_index(gt_labels, pd_labels)
+            #print("C-index:")
+            #print(idx)
             best_ari, best_eval_supervised_metrics, best_pd_labels = -1, None, None
-            eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
-            if eval_supervised_metrics["ARI"] > best_ari:
-                best_ari = eval_supervised_metrics["ARI"]
-                best_eval_supervised_metrics = eval_supervised_metrics
-                best_pd_labels = pd_labels
-                print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
+            #eval_supervised_metrics = compute_metrics(gt_labels, pd_labels)
+            #if eval_supervised_metrics["ARI"] > best_ari:
+            #    best_ari = eval_supervised_metrics["ARI"]
+            #    best_eval_supervised_metrics = eval_supervised_metrics
+            #    best_pd_labels = pd_labels
+            #    print("Epoch: Kmeans {}\t {}\n".format(epoch, eval_supervised_metrics))
 
 
 
