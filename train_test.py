@@ -12,6 +12,7 @@ from sklearn.cluster import KMeans
 matplotlib.use('Agg')
 import umap
 
+from sklearn.cluster import DBSCAN
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -348,16 +349,18 @@ def main_worker(args):
         gt_labels = []
         # inference log & supervised metrics
         if epoch % args.eval_freq == 0 or epoch == args.epochs - 1:
-            embeddings_ATAC, gt_labels_ATAC = inference(eval_loader_ATAC, model_dict["E{:}".format(1)])
-            embeddings_RNA, gt_labels_RNA = inference(eval_loader_RNA, model_dict["E{:}".format(2)])
+            embeddings_ATAC, gt_labels_ATAC = inference(args, eval_loader_ATAC, model_dict["E{:}".format(1)])
+            embeddings_RNA, gt_labels_RNA = inference(args, eval_loader_RNA, model_dict["E{:}".format(2)])
             #print("embeddings")
             #print(embeddings)
             #print("TSNE Processing")
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
-            pd_labels = KMeans(n_clusters=3,random_state=seed).fit(embeddings).labels_
+            #pd_labels = KMeans(n_clusters=3,random_state=seed).fit(embeddings).labels_
+            #dbscan
+            pd_labels = DBSCAN().fit_predict(embeddings) 
             # umap
-            reducer = umap.UMAP(random_state=42)
-            embeddings = reducer.fit_transform(embeddings)
+            #reducer = umap.UMAP(random_state=42)
+            #embeddings = reducer.fit_transform(embeddings)
             #print(pd_labels)
             #print(embeddings)
             # tsne
@@ -387,13 +390,13 @@ def main_worker(args):
 
         #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         #embeddings = tsne.fit_transform(c)
-        if epoch > 0 and epoch%10 == 0 and args.cluster_name == "kmeans":
+        if epoch > 0 and epoch%40 == 0 and args.cluster_name == "kmeans":
     
             data0 = []
             data1 = []
             data2 = []
-            #data3 = []
-            #data4 = []
+            data3 = []
+            data4 = []
             #print(pd_labels)
             #print(len(pd_labels))
             for i in range(0, len(pd_labels)):
@@ -404,26 +407,27 @@ def main_worker(args):
                     data1.append(embeddings[i])
                 if pd_labels[i] == 2:
                     data2.append(embeddings[i])
-                #if pd_labels[i] == 3:
-                #    data3.append(embeddings[i])
-                #if pd_labels[i] == 4:
-                #    data4.append(embeddings[i])
+                if pd_labels[i] == 3:
+                    data3.append(embeddings[i])
+                if pd_labels[i] == 4:
+                    data4.append(embeddings[i])
             # Plot figure
             data0 = np.array(data0)
             data1 = np.array(data1)
             data2 = np.array(data2)
-            #data3 = np.array(data3)
-            #data4 = np.array(data4)
+            data3 = np.array(data3)
+            data4 = np.array(data4)
             fig = plt.figure(1)
             plt.xlabel('X')
             plt.ylabel('Y')
             #print(data0.shape)
             plt.subplot(211)
+
             plt.scatter(data0[:,0], data0[:,1], c='#BC8F8F', s=5, alpha=0.6)
             plt.scatter(data1[:,0], data1[:,1], c='#BDB761', s=5, alpha=0.6)
             plt.scatter(data2[:,0], data2[:,1], c='#008B8B', s=5, alpha=0.6)
-            #plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=5, alpha=0.6)
-            #plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=5, alpha=0.6)
+            plt.scatter(data3[:,0], data3[:,1], c='#CD853F', s=5, alpha=0.6)
+            plt.scatter(data4[:,0], data4[:,1], c='#8FBC8F', s=5, alpha=0.6)
             plt.title("Clustered Data", fontsize = 6)
             #data0 = []
             #data1 = []
@@ -454,7 +458,7 @@ def main_worker(args):
             #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
             #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
             #plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_tsne_bm' + str(epoch) + '.pdf')
+            plt.savefig('Result_After_dbscan_bm' + str(epoch) + '.pdf')
             plt.subplot()
             # compute metrics
             seed = 0
@@ -500,6 +504,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         output, target, output_proto, target_proto = model(im_q=images[0], im_k=images[1], cluster_result=None, index=index)
         
         # InfoNCE loss
+        output = output.cuda(args.gpu)
+        target = target.cuda(args.gpu) 
         loss = criterion(output, target)   
 
         losses.update(loss.item(), images[0].size(0))
@@ -521,14 +527,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     return unsupervised_metrics
             
-def inference(eval_loader, model):
+def inference(args, eval_loader, model):
     print('Inference...')
     model.eval()
     features = []
     labels = []
 
     for i, (images, index, label) in enumerate(eval_loader):
-        images = images.cuda()
+        images = images.cuda(args.gpu)
         with torch.no_grad():
             feat = model(images, is_eval=True) 
         feat_pred = feat.data.cpu().numpy()
