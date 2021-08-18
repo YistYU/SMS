@@ -348,25 +348,26 @@ def main_worker(args):
         feat = []
         gt_labels = []
         # inference log & supervised metrics
-        if epoch % 40 == 0 and epoch > 0:
+        if epoch % 3 == 0 and epoch > 0:
             embeddings_ATAC, gt_labels_ATAC = inference(args, eval_loader_ATAC, model_dict["E{:}".format(1)])
             embeddings_RNA, gt_labels_RNA = inference(args, eval_loader_RNA, model_dict["E{:}".format(2)])
             #print("embeddings")
             #print(embeddings)
             #print("TSNE Processing")
             embeddings = np.concatenate((embeddings_ATAC, embeddings_RNA), axis=1)
-            #pd_labels = KMeans(n_clusters=3,random_state=seed).fit(embeddings).labels_
+            pd_labels = KMeans(n_clusters=5,random_state=seed).fit(embeddings).labels_
             #dbscan
-            #pd_labels = DBSCAN().fit_predict(embeddings) 
+            #pd_labels = DBSCAN(eps=0.1011, min_samples=115).fit_predict(embeddings) 
             # umap
-            reducer = umap.UMAP(random_state=42)
-            embeddings = reducer.fit_transform(embeddings)
-            pd_labels = DBSCAN().fit_predict(embeddings)
+            #reducer = umap.UMAP(random_state=42)
+            #embeddings = reducer.fit_transform(embeddings)
+            #pd_labels = DBSCAN().fit_predict(embeddings)
             #print(pd_labels)
             #print(embeddings)
             # tsne
-            #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-            #embeddings = tsne.fit_transform(embeddings)
+            tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+            embeddings = tsne.fit_transform(embeddings)
+            # pd_labels = DBSCAN(eps=0.1011, min_samples=115).fit_predict(embeddings)
             # prob_ATAC = tsne.fit_transform(embeddings_ATAC)
             # prob_RNA = tsne.fit_transform(embeddings_RNA)
             # ci_list = []
@@ -384,10 +385,11 @@ def main_worker(args):
             # c = vcdn_feat.cpu().detach().numpy()
             # c = torch.from_numpy(c)
             # pd_labels = KMeans(n_clusters=3, random_state=seed).fit(feat).labels_
-            #print(embeddings)
+            print(embeddings)
+            print(pd_labels)
             #print("embeddings after tsne")
             # perform kmeans
-            gt_labels = gt_labels_ATAC
+            # gt_labels = gt_labels_ATAC
 
             #tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
             #embeddings = tsne.fit_transform(c)
@@ -458,7 +460,7 @@ def main_worker(args):
             #plt.scatter(data3[:,0], data3[:,1], c='y', s=6)
             #plt.scatter(data4[:,0], data4[:,1], c='brown', s=6)
             #plt.title("Correct Classified data", fontsize = 10)
-            plt.savefig('Result_After_dbscan_bm' + str(epoch) + '.pdf')
+            plt.savefig('Result_tsne_kmean_mop' + str(epoch) + '.pdf')
             plt.subplot()
             # compute metrics
             seed = 0
